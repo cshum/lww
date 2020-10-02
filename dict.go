@@ -13,6 +13,7 @@ type Item struct {
 	Value []byte
 }
 
+// NewDict returns a new Dict default bias for deletes
 func NewDict() *Dict {
 	return &Dict{
 		MapPut:     map[string]Item{},
@@ -21,16 +22,20 @@ func NewDict() *Dict {
 	}
 }
 
+// Put sets the value and timestamp ts for a key.
 func (a *Dict) Put(key string, value []byte, ts uint64) {
 	if curr, ok := a.MapPut[key]; !ok || ts >= curr.Time {
 		// if timestamp equals
-		// bytes compare for deterministic outcome for convergence
+		// bytes compare values for deterministic result
 		if ts > curr.Time || bytes.Compare(value, curr.Value) == 1 {
 			a.MapPut[key] = Item{ts, value}
 		}
 	}
 }
 
+// Get returns the value bytes stored in the dict for a key, or nil if no value is present.
+// ts refers to the timestamp where put or delete exists.
+// ok indicates whether value was found in the map.
 func (a *Dict) Get(key string) (value []byte, ts uint64, ok bool) {
 	if item, hasPut := a.MapPut[key]; hasPut {
 		if t, hasDel := a.MapDelete[key]; hasDel && t >= item.Time {
@@ -46,12 +51,14 @@ func (a *Dict) Get(key string) (value []byte, ts uint64, ok bool) {
 	return
 }
 
+// Delete deletes the value for a key with timestamp.
 func (a *Dict) Delete(key string, ts uint64) {
 	if t, ok := a.MapDelete[key]; !ok || ts > t {
 		a.MapDelete[key] = ts
 	}
 }
 
+// Merge merges another Dict into itself
 func (a *Dict) Merge(b *Dict) {
 	if b == nil || a == b {
 		return
@@ -64,6 +71,7 @@ func (a *Dict) Merge(b *Dict) {
 	}
 }
 
+// Clone returns a new copy of itself
 func (a *Dict) Clone() (result *Dict) {
 	result = NewDict()
 	result.BiasDelete = a.BiasDelete
@@ -76,6 +84,8 @@ func (a *Dict) Clone() (result *Dict) {
 	return
 }
 
+// Export returns native go map of the Dict values,
+// without the timestamps and deletes.
 func (a *Dict) Export() (result map[string][]byte) {
 	result = map[string][]byte{}
 	for key := range a.MapPut {

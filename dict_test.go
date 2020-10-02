@@ -5,11 +5,14 @@ import (
 	"testing"
 )
 
+// incr increments local timestamp
 func incr(ts *uint64) uint64 {
 	*ts++
 	return *ts
 }
 
+// witness updates local timestamp
+// after witnessing timestamp of another process
 func witness(a *uint64, b uint64) {
 	if *a > b {
 		*a++
@@ -19,16 +22,17 @@ func witness(a *uint64, b uint64) {
 }
 
 func TestDict_CRUD(t *testing.T) {
-	var ts uint64 = 1
+	// Test local CRUD and methods
+	var ts uint64
 	a := NewDict()
 
 	a.Put("a", []byte("1"), incr(&ts))
-	a.Put("a", []byte("11"), 1)
+	a.Put("a", []byte("11"), 0)
 	if val, _, ok := a.Get("a"); !(string(val) == "1" && ok) {
 		t.Errorf("put error %v %v", val, ok)
 	}
 
-	a.Put("b", []byte("22"), 1)
+	a.Put("b", []byte("22"), 0)
 	a.Put("b", []byte("2"), incr(&ts))
 	if val, _, ok := a.Get("b"); !(string(val) == "2" && ok) {
 		t.Errorf("put error %v %v", val, ok)
@@ -42,7 +46,7 @@ func TestDict_CRUD(t *testing.T) {
 	}
 
 	a.Delete("a", incr(&ts))
-	if val, _, ok := a.Get("a"); !(string(val) == "" && !ok) {
+	if val, _, ok := a.Get("a"); !(val == nil && !ok) {
 		t.Errorf("delete error %v %v", val, ok)
 	}
 
@@ -63,11 +67,12 @@ func TestDict_CRUD(t *testing.T) {
 }
 
 func TestDict_Merge(t *testing.T) {
+	// Test basic multi dict merge
 	var (
-		a          = NewDict()
-		aTs uint64 = 1
-		b          = NewDict()
-		bTs uint64 = 1
+		a   = NewDict()
+		aTs uint64
+		b   = NewDict()
+		bTs uint64
 	)
 
 	a.Put("a", []byte("1"), incr(&aTs))
@@ -111,15 +116,17 @@ func TestDict_Merge(t *testing.T) {
 }
 
 func TestDict_Convergence(t *testing.T) {
+	// Test multi dict merge edge case,
+	// of same timestamp convergence
 	var (
-		a          = NewDict()
-		aTs uint64 = 1
-		b          = NewDict()
-		bTs uint64 = 1
-		c          = NewDict()
-		cTs uint64 = 1
-		d          = NewDict()
-		dTs uint64 = 1
+		a   = NewDict()
+		aTs uint64
+		b   = NewDict()
+		bTs uint64
+		c   = NewDict()
+		cTs uint64
+		d   = NewDict()
+		dTs uint64
 	)
 	a.Put("a", []byte("1"), incr(&aTs))
 	b.Put("a", []byte("2"), incr(&bTs))
@@ -157,13 +164,10 @@ func TestDict_Convergence(t *testing.T) {
 	if !(reflect.DeepEqual(a, b) && reflect.DeepEqual(b, c) && reflect.DeepEqual(c, d)) {
 		t.Errorf("a b c d should converge %v %v %v %v", a, b, c, d)
 	}
-	if data := a.Export(); !reflect.DeepEqual(data, map[string][]byte{}) {
-		t.Errorf("dict export not match %v", data)
-	}
-
 }
 
 func TestDict_BiasDelete(t *testing.T) {
+	// Test bias delete
 	dict := NewDict()
 
 	dict.Put("a", []byte("1"), 2)
@@ -178,7 +182,7 @@ func TestDict_BiasDelete(t *testing.T) {
 
 	dict.Delete("a", 2)
 	dict.Delete("a", 3)
-	if val, ts, ok := dict.Get("a"); !(string(val) == "" && ts == 3 && !ok) {
+	if val, ts, ok := dict.Get("a"); !(val == nil && ts == 3 && !ok) {
 		t.Errorf("bias delete error %v %v %v", val, ts, ok)
 	}
 
@@ -188,6 +192,7 @@ func TestDict_BiasDelete(t *testing.T) {
 }
 
 func TestDict_BiasPut(t *testing.T) {
+	// Test bias put
 	dict := NewDict()
 	dict.BiasDelete = false
 
