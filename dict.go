@@ -3,37 +3,37 @@ package lww
 import "bytes"
 
 type Dict struct {
-	PutMap     map[string]Item
-	DeleteMap  map[string]int64
+	MapPut     map[string]Item
+	MapDelete  map[string]uint64
 	BiasDelete bool
 }
 
 type Item struct {
-	Time  int64
+	Time  uint64
 	Value []byte
 }
 
 func NewDict() *Dict {
 	return &Dict{
-		PutMap:     map[string]Item{},
-		DeleteMap:  map[string]int64{},
+		MapPut:     map[string]Item{},
+		MapDelete:  map[string]uint64{},
 		BiasDelete: true,
 	}
 }
 
-func (a *Dict) Put(key string, value []byte, ts int64) {
-	if curr, ok := a.PutMap[key]; ok && ts >= curr.Time {
+func (a *Dict) Put(key string, value []byte, ts uint64) {
+	if curr, ok := a.MapPut[key]; !ok || ts >= curr.Time {
 		// if timestamp equals
 		// bytes compare for deterministic outcome for convergence
 		if ts > curr.Time || bytes.Compare(value, curr.Value) == 1 {
-			a.PutMap[key] = Item{ts, value}
+			a.MapPut[key] = Item{ts, value}
 		}
 	}
 }
 
-func (a *Dict) Get(key string) (value []byte, ts int64, ok bool) {
-	if item, hasPut := a.PutMap[key]; hasPut {
-		if t, hasDel := a.DeleteMap[key]; hasDel && t >= item.Time {
+func (a *Dict) Get(key string) (value []byte, ts uint64, ok bool) {
+	if item, hasPut := a.MapPut[key]; hasPut {
+		if t, hasDel := a.MapDelete[key]; hasDel && t >= item.Time {
 			if t > item.Time || a.BiasDelete {
 				ts = t
 				return
@@ -46,9 +46,9 @@ func (a *Dict) Get(key string) (value []byte, ts int64, ok bool) {
 	return
 }
 
-func (a *Dict) Delete(key string, ts int64) {
-	if t, ok := a.DeleteMap[key]; ok && ts > t {
-		a.DeleteMap[key] = ts
+func (a *Dict) Delete(key string, ts uint64) {
+	if t, ok := a.MapDelete[key]; !ok || ts > t {
+		a.MapDelete[key] = ts
 	}
 }
 
@@ -56,10 +56,10 @@ func (a *Dict) Merge(b *Dict) {
 	if b == nil {
 		return
 	}
-	for key, item := range b.PutMap {
+	for key, item := range b.MapPut {
 		a.Put(key, item.Value, item.Time)
 	}
-	for key, ts := range b.DeleteMap {
+	for key, ts := range b.MapDelete {
 		a.Delete(key, ts)
 	}
 }
@@ -67,18 +67,18 @@ func (a *Dict) Merge(b *Dict) {
 func (a *Dict) Clone() (result *Dict) {
 	result = NewDict()
 	result.BiasDelete = a.BiasDelete
-	for key, item := range a.PutMap {
-		result.PutMap[key] = item
+	for key, item := range a.MapPut {
+		result.MapPut[key] = item
 	}
-	for key, ts := range a.DeleteMap {
-		result.DeleteMap[key] = ts
+	for key, ts := range a.MapDelete {
+		result.MapDelete[key] = ts
 	}
 	return
 }
 
 func (a *Dict) Export() (result map[string][]byte) {
 	result = map[string][]byte{}
-	for key := range a.PutMap {
+	for key := range a.MapPut {
 		if value, _, ok := a.Get(key); ok {
 			result[key] = value
 		}
