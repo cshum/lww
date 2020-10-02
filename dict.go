@@ -53,7 +53,7 @@ func (a *Dict) Delete(key string, ts uint64) {
 }
 
 func (a *Dict) Merge(b *Dict) {
-	if b == nil {
+	if b == nil || a == b {
 		return
 	}
 	for key, item := range b.MapPut {
