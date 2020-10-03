@@ -35,11 +35,11 @@ NewDict returns a new Dict default bias for deletes
 ```go
 func (dict *Dict) Add(key string, value []byte, ts uint64)
 ```
-Add sets the value and timestamp ts for a key.
+Add adds or updates the value and timestamp ts for a key.
 
-In addition to adding a value like lww set, this also updates value and
-timestamp of the same key. If timestamp equals, the larger bytes value would be
-flavoured in order to preserve convergence.
+In addition to adding a value like lww set, this also updates value of the same
+key. If timestamps are equal, the larger bytes value would be flavoured in order
+to preserve convergence.
 
 #### func (*Dict) Clone
 
