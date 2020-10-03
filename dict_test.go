@@ -10,16 +10,16 @@ func TestDict_CRUD(t *testing.T) {
 	var ts uint64
 	a := NewDict()
 
-	a.Put("a", []byte("1"), incr(&ts))
-	a.Put("a", []byte("11"), 0) // should no op
+	a.Add("a", []byte("1"), incr(&ts))
+	a.Add("a", []byte("11"), 0) // should no op
 	if val, _, ok := a.Get("a"); !(string(val) == "1" && ok) {
-		t.Errorf("put error %v %v", val, ok)
+		t.Errorf("add error %v %v", val, ok)
 	}
 
-	a.Put("b", []byte("22"), 0) // should no op
-	a.Put("b", []byte("2"), incr(&ts))
+	a.Add("b", []byte("22"), 0) // should no op
+	a.Add("b", []byte("2"), incr(&ts))
 	if val, _, ok := a.Get("b"); !(string(val) == "2" && ok) {
-		t.Errorf("put error %v %v", val, ok)
+		t.Errorf("add error %v %v", val, ok)
 	}
 
 	if data := a.ToMap(); !reflect.DeepEqual(data, map[string][]byte{
@@ -29,14 +29,14 @@ func TestDict_CRUD(t *testing.T) {
 		t.Errorf("a export not match %v", data)
 	}
 
-	a.Delete("a", incr(&ts))
+	a.Remove("a", incr(&ts))
 	if val, _, ok := a.Get("a"); !(val == nil && !ok) {
-		t.Errorf("delete error %v %v", val, ok)
+		t.Errorf("remove error %v %v", val, ok)
 	}
 
-	a.Delete("b", 1)
+	a.Remove("b", 1)
 	if val, _, ok := a.Get("b"); !(string(val) == "2" && ok) {
-		t.Errorf("should not delete ts less %v %v", val, ok)
+		t.Errorf("should not remove ts less %v %v", val, ok)
 	}
 
 	if data := a.ToMap(); !reflect.DeepEqual(data, map[string][]byte{
@@ -75,9 +75,9 @@ func TestDict_Merge(t *testing.T) {
 		bTs uint64
 	)
 
-	a.Put("a", []byte("1"), incr(&aTs))
-	a.Put("b", []byte("2"), incr(&aTs))
-	b.Put("c", []byte("3"), incr(&bTs))
+	a.Add("a", []byte("1"), incr(&aTs))
+	a.Add("b", []byte("2"), incr(&aTs))
+	b.Add("c", []byte("3"), incr(&bTs))
 
 	a.Merge(a)
 	a.Merge(nil)
@@ -97,8 +97,8 @@ func TestDict_Merge(t *testing.T) {
 		t.Errorf("dict export not match %v", data)
 	}
 
-	a.Delete("c", incr(&aTs))
-	b.Delete("b", incr(&bTs))
+	a.Remove("c", incr(&aTs))
+	b.Remove("b", incr(&bTs))
 
 	a.Merge(b)
 	witness(&aTs, bTs)
@@ -124,9 +124,9 @@ func TestDict_Convergence(t *testing.T) {
 		c = NewDict()
 		d = NewDict()
 	)
-	a.Put("a", []byte("1"), 1)
-	b.Put("a", []byte("2"), 1)
-	c.Put("a", []byte("3"), 1)
+	a.Add("a", []byte("1"), 1)
+	b.Add("a", []byte("2"), 1)
+	c.Add("a", []byte("3"), 1)
 
 	a.Merge(b)
 	a.Merge(c)
@@ -138,7 +138,7 @@ func TestDict_Convergence(t *testing.T) {
 	}
 
 	d.Merge(a)
-	d.Delete("a", 1)
+	d.Remove("a", 1)
 
 	a.Merge(d)
 	c.Merge(a)
@@ -148,28 +148,28 @@ func TestDict_Convergence(t *testing.T) {
 		t.Errorf("a b c d should converge %v %v %v %v", a, b, c, d)
 	}
 	if data := a.ToMap(); !reflect.DeepEqual(data, map[string][]byte{}) {
-		t.Errorf("bias delete error %v", data)
+		t.Errorf("bias remove error %v", data)
 	}
 }
 
-func TestDict_BiasDelete(t *testing.T) {
-	// Test bias delete
+func TestDict_BiasRemove(t *testing.T) {
+	// Test bias remove
 	dict := NewDict()
 
-	dict.Put("a", []byte("1"), 2)
+	dict.Add("a", []byte("1"), 2)
 	if val, ts, ok := dict.Get("a"); !(string(val) == "1" && ts == 2 && ok) {
-		t.Errorf("put error %v %v %v", val, ts, ok)
+		t.Errorf("add error %v %v %v", val, ts, ok)
 	}
 
-	dict.Delete("a", 1)
+	dict.Remove("a", 1)
 	if val, ts, ok := dict.Get("a"); !(string(val) == "1" && ts == 2 && ok) {
-		t.Errorf("should not delete with time less %v %v %v", val, ts, ok)
+		t.Errorf("should not remove with time less %v %v %v", val, ts, ok)
 	}
 
-	dict.Delete("a", 2)
-	dict.Delete("a", 3)
+	dict.Remove("a", 2)
+	dict.Remove("a", 3)
 	if val, ts, ok := dict.Get("a"); !(val == nil && ts == 3 && !ok) {
-		t.Errorf("bias delete error %v %v %v", val, ts, ok)
+		t.Errorf("bias remove error %v %v %v", val, ts, ok)
 	}
 
 	if data := dict.ToMap(); !reflect.DeepEqual(data, map[string][]byte{}) {
@@ -177,19 +177,19 @@ func TestDict_BiasDelete(t *testing.T) {
 	}
 }
 
-func TestDict_BiasPut(t *testing.T) {
-	// Test bias put
+func TestDict_BiasAdd(t *testing.T) {
+	// Test bias add
 	dict := NewDict()
-	dict.BiasDelete = false
+	dict.BiasRemove = false
 
-	dict.Put("a", []byte("1"), 2)
+	dict.Add("a", []byte("1"), 2)
 	if val, ts, ok := dict.Get("a"); !(string(val) == "1" && ts == 2 && ok) {
-		t.Errorf("put error %v %v %v", val, ts, ok)
+		t.Errorf("add error %v %v %v", val, ts, ok)
 	}
 
-	dict.Delete("a", 2)
+	dict.Remove("a", 2)
 	if val, ts, ok := dict.Get("a"); !(string(val) == "1" && ts == 2 && ok) {
-		t.Errorf("should not delete with bias put %v %v %v", val, ts, ok)
+		t.Errorf("should not remove with bias add %v %v %v", val, ts, ok)
 	}
 
 	if data := dict.ToMap(); !reflect.DeepEqual(data, map[string][]byte{

@@ -3,14 +3,16 @@ package lww
 import "bytes"
 
 // Dict is a state-based LWW-Element-Dictionary,
-// consisting MapPut and MapDelete for underlying structure, which are not thread safe.
+// consisting MapAdd and MapRemove for underlying structure, which are not thread safe.
 // It is expected to add separate locking  or coordination under goroutines
 //
-// BiasDelete denotes bias towards delete if true or bias towards put if false.
+// BiasRemove denotes bias towards delete if true or bias towards put if false.
+//
+// run test: `go test -v`
 type Dict struct {
-	MapPut     map[string]Item
-	MapDelete  map[string]uint64
-	BiasDelete bool
+	MapAdd     map[string]Item
+	MapRemove  map[string]uint64
+	BiasRemove bool
 }
 
 // Item is a dictionary item of Dict element,
@@ -23,31 +25,36 @@ type Item struct {
 // NewDict returns a new Dict default bias for deletes
 func NewDict() *Dict {
 	return &Dict{
-		MapPut:     map[string]Item{},
-		MapDelete:  map[string]uint64{},
-		BiasDelete: true,
+		MapAdd:     map[string]Item{},
+		MapRemove:  map[string]uint64{},
+		BiasRemove: true,
 	}
 }
 
-// Put sets the value and timestamp ts for a key.
-func (a *Dict) Put(key string, value []byte, ts uint64) {
-	if curr, ok := a.MapPut[key]; !ok ||
+// Add sets the value and timestamp ts for a key.
+//
+// In addition to adding a value like lww set, this also updates value and timestamp of the same key.
+// If timestamp equals, the larger bytes value would be flavoured in order to preserve convergence.
+func (dict *Dict) Add(key string, value []byte, ts uint64) {
+	if curr, ok := dict.MapAdd[key]; !ok ||
 		ts > curr.Time ||
 		(ts == curr.Time && bytes.Compare(value, curr.Value) == 1) {
 		// if timestamp equals
 		// bytes compare values for deterministic result
-		a.MapPut[key] = Item{ts, value}
+		dict.MapAdd[key] = Item{ts, value}
 	}
 }
 
 // Get returns the value bytes stored in the dict for a key, or nil if no value is present.
-// ts refers to the timestamp where put or delete exists.
+// ts refers to the timestamp where add or remove exists.
 // ok indicates whether value was found in the map.
-func (a *Dict) Get(key string) (value []byte, ts uint64, ok bool) {
-	if item, hasPut := a.MapPut[key]; hasPut {
-		if t, hasDel := a.MapDelete[key]; hasDel && t >= item.Time {
-			// if timestamp equals, bias delete op based on BiasDelete flag
-			if t > item.Time || a.BiasDelete {
+//
+// With `dict.BiasRemove = true` being set, it will flavors remove over add if timestamps are equal.
+func (dict *Dict) Get(key string) (value []byte, ts uint64, ok bool) {
+	if item, hasPut := dict.MapAdd[key]; hasPut {
+		if t, hasDel := dict.MapRemove[key]; hasDel && t >= item.Time {
+			// if timestamp equals, bias remove op based on BiasRemove flag
+			if t > item.Time || dict.BiasRemove {
 				ts = t
 				return
 			}
@@ -59,45 +66,45 @@ func (a *Dict) Get(key string) (value []byte, ts uint64, ok bool) {
 	return
 }
 
-// Delete deletes the value for a key with timestamp.
-func (a *Dict) Delete(key string, ts uint64) {
-	if t, ok := a.MapDelete[key]; !ok || ts > t {
-		a.MapDelete[key] = ts
+// Remove removes the value for a key with timestamp.
+func (dict *Dict) Remove(key string, ts uint64) {
+	if t, ok := dict.MapRemove[key]; !ok || ts > t {
+		dict.MapRemove[key] = ts
 	}
 }
 
-// Merge merges another Dict to itself
-func (a *Dict) Merge(b *Dict) {
-	if b == nil || a == b {
+// Merge merges other Dict to itself
+func (dict *Dict) Merge(other *Dict) {
+	if other == nil || dict == other {
 		return
 	}
-	for key, item := range b.MapPut {
-		a.Put(key, item.Value, item.Time)
+	for key, item := range other.MapAdd {
+		dict.Add(key, item.Value, item.Time)
 	}
-	for key, ts := range b.MapDelete {
-		a.Delete(key, ts)
+	for key, ts := range other.MapRemove {
+		dict.Remove(key, ts)
 	}
 }
 
 // Clone returns a new copy of itself
-func (a *Dict) Clone() (result *Dict) {
+func (dict *Dict) Clone() (result *Dict) {
 	result = NewDict()
-	result.BiasDelete = a.BiasDelete
-	for key, item := range a.MapPut {
-		result.MapPut[key] = item
+	result.BiasRemove = dict.BiasRemove
+	for key, item := range dict.MapAdd {
+		result.MapAdd[key] = item
 	}
-	for key, ts := range a.MapDelete {
-		result.MapDelete[key] = ts
+	for key, ts := range dict.MapRemove {
+		result.MapRemove[key] = ts
 	}
 	return
 }
 
 // ToMap returns native go map from the Dict values
 // without the timestamps and deletes.
-func (a *Dict) ToMap() (result map[string][]byte) {
+func (dict *Dict) ToMap() (result map[string][]byte) {
 	result = map[string][]byte{}
-	for key := range a.MapPut {
-		if value, _, ok := a.Get(key); ok {
+	for key := range dict.MapAdd {
+		if value, _, ok := dict.Get(key); ok {
 			result[key] = value
 		}
 	}
