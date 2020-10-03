@@ -5,22 +5,6 @@ import (
 	"testing"
 )
 
-// incr increments local timestamp
-func incr(ts *uint64) uint64 {
-	*ts++
-	return *ts
-}
-
-// witness updates local timestamp
-// after witnessing timestamp of another process
-func witness(a *uint64, b uint64) {
-	if *a > b {
-		*a++
-	} else {
-		*a = b + 1
-	}
-}
-
 func TestDict_CRUD(t *testing.T) {
 	// Test local CRUD and methods
 	var ts uint64
@@ -63,6 +47,22 @@ func TestDict_CRUD(t *testing.T) {
 
 	if clone := a.Clone(); !reflect.DeepEqual(a, clone) {
 		t.Errorf("a clone mismatch %v %v", a, clone)
+	}
+}
+
+// incr increments local timestamp
+func incr(ts *uint64) uint64 {
+	*ts++
+	return *ts
+}
+
+// witness updates local timestamp
+// after witnessing timestamp of another process
+func witness(a *uint64, b uint64) {
+	if *a > b {
+		*a++
+	} else {
+		*a = b + 1
 	}
 }
 
