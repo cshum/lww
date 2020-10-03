@@ -2,7 +2,11 @@ package lww
 
 import "bytes"
 
-// Dict is a state-based LWW-Element-Dictionary
+// Dict is a state-based LWW-Element-Dictionary,
+// consisting MapPut and MapDelete for underlying structure, which are not thread safe.
+// It is expected to add separate locking  or coordination under goroutines
+//
+// BiasDelete denotes bias towards delete if true or bias towards put if false.
 type Dict struct {
 	MapPut     map[string]Item
 	MapDelete  map[string]uint64
@@ -27,12 +31,12 @@ func NewDict() *Dict {
 
 // Put sets the value and timestamp ts for a key.
 func (a *Dict) Put(key string, value []byte, ts uint64) {
-	if curr, ok := a.MapPut[key]; !ok || ts >= curr.Time {
+	if curr, ok := a.MapPut[key]; !ok ||
+		ts > curr.Time ||
+		(ts == curr.Time && bytes.Compare(value, curr.Value) == 1) {
 		// if timestamp equals
 		// bytes compare values for deterministic result
-		if ts > curr.Time || bytes.Compare(value, curr.Value) == 1 {
-			a.MapPut[key] = Item{ts, value}
-		}
+		a.MapPut[key] = Item{ts, value}
 	}
 }
 
@@ -62,7 +66,7 @@ func (a *Dict) Delete(key string, ts uint64) {
 	}
 }
 
-// Merge merges another Dict into itself
+// Merge merges another Dict to itself
 func (a *Dict) Merge(b *Dict) {
 	if b == nil || a == b {
 		return
@@ -88,9 +92,9 @@ func (a *Dict) Clone() (result *Dict) {
 	return
 }
 
-// Export returns native go map of the Dict values,
+// ToMap returns native go map from the Dict values
 // without the timestamps and deletes.
-func (a *Dict) Export() (result map[string][]byte) {
+func (a *Dict) ToMap() (result map[string][]byte) {
 	result = map[string][]byte{}
 	for key := range a.MapPut {
 		if value, _, ok := a.Get(key); ok {

@@ -22,7 +22,7 @@ func TestDict_CRUD(t *testing.T) {
 		t.Errorf("put error %v %v", val, ok)
 	}
 
-	if data := a.Export(); !reflect.DeepEqual(data, map[string][]byte{
+	if data := a.ToMap(); !reflect.DeepEqual(data, map[string][]byte{
 		"a": []byte("1"),
 		"b": []byte("2"),
 	}) {
@@ -39,7 +39,7 @@ func TestDict_CRUD(t *testing.T) {
 		t.Errorf("should not delete ts less %v %v", val, ok)
 	}
 
-	if data := a.Export(); !reflect.DeepEqual(data, map[string][]byte{
+	if data := a.ToMap(); !reflect.DeepEqual(data, map[string][]byte{
 		"b": []byte("2"),
 	}) {
 		t.Errorf("a export not match %v", data)
@@ -89,7 +89,7 @@ func TestDict_Merge(t *testing.T) {
 	if !reflect.DeepEqual(a, b) {
 		t.Errorf("a b not converge %v %v", a, b)
 	}
-	if data := a.Export(); !reflect.DeepEqual(data, map[string][]byte{
+	if data := a.ToMap(); !reflect.DeepEqual(data, map[string][]byte{
 		"a": []byte("1"),
 		"b": []byte("2"),
 		"c": []byte("3"),
@@ -108,9 +108,9 @@ func TestDict_Merge(t *testing.T) {
 	if !reflect.DeepEqual(a, b) {
 		t.Errorf("a b not converge %v %v", a, b)
 	}
-	if data := a.Export(); !(reflect.DeepEqual(data, map[string][]byte{
+	if data := a.ToMap(); !(reflect.DeepEqual(data, map[string][]byte{
 		"a": []byte("1"),
-	}) && reflect.DeepEqual(data, b.Export())) {
+	}) && reflect.DeepEqual(data, b.ToMap())) {
 		t.Errorf("dict export not match %v", data)
 	}
 }
@@ -147,7 +147,7 @@ func TestDict_Convergence(t *testing.T) {
 	if !(reflect.DeepEqual(a, b) && reflect.DeepEqual(b, c) && reflect.DeepEqual(c, d)) {
 		t.Errorf("a b c d should converge %v %v %v %v", a, b, c, d)
 	}
-	if data := a.Export(); !reflect.DeepEqual(data, map[string][]byte{}) {
+	if data := a.ToMap(); !reflect.DeepEqual(data, map[string][]byte{}) {
 		t.Errorf("bias delete error %v", data)
 	}
 }
@@ -172,7 +172,7 @@ func TestDict_BiasDelete(t *testing.T) {
 		t.Errorf("bias delete error %v %v %v", val, ts, ok)
 	}
 
-	if data := dict.Export(); !reflect.DeepEqual(data, map[string][]byte{}) {
+	if data := dict.ToMap(); !reflect.DeepEqual(data, map[string][]byte{}) {
 		t.Errorf("dict export not match %v", data)
 	}
 }
@@ -192,7 +192,7 @@ func TestDict_BiasPut(t *testing.T) {
 		t.Errorf("should not delete with bias put %v %v %v", val, ts, ok)
 	}
 
-	if data := dict.Export(); !reflect.DeepEqual(data, map[string][]byte{
+	if data := dict.ToMap(); !reflect.DeepEqual(data, map[string][]byte{
 		"a": []byte("1"),
 	}) {
 		t.Errorf("dict export not match %v", data)
