@@ -2,9 +2,11 @@ package lww
 
 import "bytes"
 
-// Dict is a state-based LWW-Element-Dictionary,
-// consisting MapAdd and MapRemove for underlying structure, which are not thread safe.
-// It is expected to add separate locking  or coordination under goroutines
+// Dict is a state-based LWW-Element-Dictionary variants,
+// consists of MapAdd and MapRemove for add and remove operations.
+//
+// The underlying map structure is not thread safe.
+// It is expected to implement additional locking or coordination when using under goroutines.
 //
 // BiasRemove denotes bias towards delete if true or bias towards put if false.
 //
