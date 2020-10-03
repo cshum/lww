@@ -42,6 +42,7 @@ func (a *Dict) Put(key string, value []byte, ts uint64) {
 func (a *Dict) Get(key string) (value []byte, ts uint64, ok bool) {
 	if item, hasPut := a.MapPut[key]; hasPut {
 		if t, hasDel := a.MapDelete[key]; hasDel && t >= item.Time {
+			// if timestamp equals, bias delete op based on BiasDelete flag
 			if t > item.Time || a.BiasDelete {
 				ts = t
 				return
