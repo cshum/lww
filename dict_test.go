@@ -27,12 +27,12 @@ func TestDict_CRUD(t *testing.T) {
 	a := NewDict()
 
 	a.Put("a", []byte("1"), incr(&ts))
-	a.Put("a", []byte("11"), 0)
+	a.Put("a", []byte("11"), 0) // should no op
 	if val, _, ok := a.Get("a"); !(string(val) == "1" && ok) {
 		t.Errorf("put error %v %v", val, ok)
 	}
 
-	a.Put("b", []byte("22"), 0)
+	a.Put("b", []byte("22"), 0) // should no op
 	a.Put("b", []byte("2"), incr(&ts))
 	if val, _, ok := a.Get("b"); !(string(val) == "2" && ok) {
 		t.Errorf("put error %v %v", val, ok)
@@ -119,50 +119,36 @@ func TestDict_Convergence(t *testing.T) {
 	// Test multi dict merge edge case,
 	// of same timestamp convergence
 	var (
-		a   = NewDict()
-		aTs uint64
-		b   = NewDict()
-		bTs uint64
-		c   = NewDict()
-		cTs uint64
-		d   = NewDict()
-		dTs uint64
+		a = NewDict()
+		b = NewDict()
+		c = NewDict()
+		d = NewDict()
 	)
-	a.Put("a", []byte("1"), incr(&aTs))
-	b.Put("a", []byte("2"), incr(&bTs))
-	c.Put("a", []byte("3"), incr(&cTs))
+	a.Put("a", []byte("1"), 1)
+	b.Put("a", []byte("2"), 1)
+	c.Put("a", []byte("3"), 1)
 
 	a.Merge(b)
-	witness(&aTs, bTs)
 	a.Merge(c)
-	witness(&aTs, cTs)
 	c.Merge(a)
-	witness(&cTs, aTs)
 	b.Merge(a)
-	witness(&bTs, aTs)
 
 	if !(reflect.DeepEqual(a, b) && reflect.DeepEqual(b, c)) {
 		t.Errorf("a b c should converge %v %v %v", a, b, c)
 	}
-	if data := a.Export(); !reflect.DeepEqual(data, map[string][]byte{
-		"a": []byte("3"),
-	}) {
-		t.Errorf("dict export not match %v", data)
-	}
 
 	d.Merge(a)
-	witness(&dTs, aTs)
+	d.Delete("a", 1)
 
-	d.Delete("a", incr(&dTs))
 	a.Merge(d)
-	witness(&aTs, dTs)
 	c.Merge(a)
-	witness(&cTs, aTs)
 	b.Merge(a)
-	witness(&bTs, aTs)
 
 	if !(reflect.DeepEqual(a, b) && reflect.DeepEqual(b, c) && reflect.DeepEqual(c, d)) {
 		t.Errorf("a b c d should converge %v %v %v %v", a, b, c, d)
+	}
+	if data := a.Export(); !reflect.DeepEqual(data, map[string][]byte{}) {
+		t.Errorf("bias delete error %v", data)
 	}
 }
 

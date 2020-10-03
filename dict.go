@@ -2,12 +2,15 @@ package lww
 
 import "bytes"
 
+// Dict is a state-based LWW-Element-Dictionary
 type Dict struct {
 	MapPut     map[string]Item
 	MapDelete  map[string]uint64
 	BiasDelete bool
 }
 
+// Item is a dictionary item of Dict element,
+// consists of dictionary value and timestamp
 type Item struct {
 	Time  uint64
 	Value []byte
